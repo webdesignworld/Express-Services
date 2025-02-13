@@ -1,9 +1,9 @@
 
 const express = require('express');
 const router = express.Router();
-const Category = require('../models/category');
+const Category = require('../models/categorySchema');
 
-// Categories Listing Service
+
 router.get('/categories', async (req, res) => {
   try {
     const categories = await Category.find({});

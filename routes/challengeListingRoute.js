@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const Challenge = require("../models/challenge");
-const Submission = require("../models/submission");
+const Challenge = require("../models/challengeSchema");
+const Submission = require("../models/submissionSchema");
 
 
 //test with user id, bypass auth
-const requireAuth = (req, res, next) => {
-  req.user = { id: "test-manager-id", role: "manager" };
-  next();
-};
+// const requireAuth = (req, res, next) => {
+//   req.user = { id: "test-manager-id", role: "manager" };
+//   next();
+// };
 
 //1. Implement a service to list all challenges.
 router.get("/challenges", requireAuth, async (req, res) => {
