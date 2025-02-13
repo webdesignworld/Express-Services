@@ -6,21 +6,6 @@ const Submission = require("../models/submissionSchema");
 const requireCoder = require("../middleware/requireCoder");
 const User = require("../models/userSchema");
 
-const requireCoder = (req, res, next) => {
-  // 1. For testing make sure to protect the route for the grading service so that only
-  // coders are able to submit a code for grading.
-  req.user = { id: "d6799fa2ce00d521f47b10c39", role: "coder" }; // REMOVE IN PRODUCTION
-
-  // Only allow users with the 'coder' role to proceed.
-  if (req.user.role !== "coder") {
-    return res
-      .status(403)
-      .json({ error: "Only coders can submit code for grading." });
-  }
-  // If the user is a coder, continue to the next middleware/route handler.
-  next();
-};
-
 router.post("/grade", requireCoder, async (req, res) => {
   try {
     const { challenge_id, lang, code } = req.body;
