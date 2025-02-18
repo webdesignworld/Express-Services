@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Challenge = require("../models/challengeSchema");
 const Submission = require("../models/submissionSchema");
-
+const authorize = require("../middleware/auth");
 
 //test with user id, bypass auth
 // const requireAuth = (req, res, next) => {
@@ -11,14 +11,14 @@ const Submission = require("../models/submissionSchema");
 // };
 
 //1. Implement a service to list all challenges.
-router.get("/challenges", requireAuth, async (req, res) => {
+router.get("/challenges", authorize(["manager", "coder"]), async (req, res) => {
   try {
     let challenges;
 
-    // 2. If the requester is a coder, display all available challenges. 3. If the requester is a manager, display only challenges created by them.
-    if (req.user.role === "manager") {
+
+    if (req.user.role === "manager") { //2. If the requester is a manager, display only challenges created by them.
       challenges = await Challenge.find({ createdBy: req.user.id });
-    } else if (req.user.role === "coder") {
+    } else if (req.user.role === "coder") {    // 3. If the requester is a coder, display all available challenges. 
       challenges = await Challenge.find({});
     } else {
       return res.status(403).json({ error: "Invalid role" });
@@ -34,7 +34,7 @@ router.get("/challenges", requireAuth, async (req, res) => {
 
         if (challenge.attemptedCount > 0) {
           challengeObj.solution_rate =
-            (challenge.solvedCount / challenge.attemptedCount) * 100;
+            (challenge.solvedCount / challenge.attemptedCount) * 100; //percentage
         } else {
           challengeObj.solution_rate = 0;
         }
@@ -72,7 +72,7 @@ router.get("/challenges", requireAuth, async (req, res) => {
   }
 });
 
-// same by id
+// The same thing should be done for getting the challenge by id.
 router.get("/challenges/:id", requireAuth, async (req, res) => {
   try {
     const challenge = await Challenge.findById(req.params.id);

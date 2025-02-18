@@ -30,6 +30,7 @@ async function sendVerificationEmail(user, token) {
   });
 
   const url = `http://localhost:3000/auth/verify?token=${token}`;
+  console.log("Verification URL:", url);
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: user.email,
@@ -41,13 +42,28 @@ async function sendVerificationEmail(user, token) {
 // Signup endpoint
 router.post("/signup", async (req, res) => {
   try {
-    const { first_name, last_name, email, password, avatar, role, description } = req.body;
-
+    const {
+      first_name,
+      last_name,
+      email,
+      password,
+      avatar,
+      role,
+      description,
+    } = req.body;
 
     console.log("Request Body:", req.body);
-    
+
     // Check for required fields
-    if (!first_name || !last_name || !email || !password || !avatar || !role || !description) {
+    if (
+      !first_name ||
+      !last_name ||
+      !email ||
+      !password ||
+      !avatar ||
+      !role ||
+      !description
+    ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -70,16 +86,20 @@ router.post("/signup", async (req, res) => {
       role,
       description,
       isVerified: false, // assuming your schema includes this field
-      score: 0,          // default score
+      score: 0, // default score
     });
 
     // Create a verification token and send a verification email
     const token = createVerificationToken(newUser);
     await sendVerificationEmail(newUser, token);
 
-    res.status(201).json({ message: "Registration successful. Please verify your email." });
+    res
+      .status(201)
+      .json({ message: "Registration successful. Please verify your email." });
   } catch (error) {
-    res.status(500).json({ message: "Error registering user", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error registering user", error: error.message });
   }
 });
 

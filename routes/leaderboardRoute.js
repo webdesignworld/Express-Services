@@ -2,17 +2,18 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/userSchema");
 const Submission = require("../models/submissionSchema");
+const authorize = require ("../middleware/auth")
 
-const requiremyCoder = (req, res, next) => {
-  req.user = { id: "67addfce5fb6d2d47a9ea4f7", role: "coder" };
-  if (req.user.role !== "coder") {
-    return res
-      .status(403)
-      .json({ error: "Only coders can view this information." }); // 1. First, make sure to protect the route for this service so that only coders
-    //     are allowed to see the leaderboard.
-  }
-  next();
-};
+// const requiremyCoder = (req, res, next) => {
+//   req.user = { id: "67addfce5fb6d2d47a9ea4f7", role: "coder" };
+//   if (req.user.role !== "coder") {
+//     return res
+//       .status(403)
+//       .json({ error: "Only coders can view this information." }); // 1. First, make sure to protect the route for this service so that only coders
+//     //     are allowed to see the leaderboard.
+//   }
+//   next();
+// };
 
 /**
  * GET 2. Add the service to get the leaderboard.
@@ -22,7 +23,7 @@ highest to the lowest).
 the response. Solved challenges are the challenges from the coder's
 correct submissions.
  */
-router.get("/leaderboard", requiremyCoder, async (req, res) => {
+router.get("/leaderboard", authorize(["coder"]), async (req, res) => {
   try {
     // Aggregate users with role "coder"
     const leaderboard = await User.aggregate([

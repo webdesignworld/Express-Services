@@ -3,10 +3,10 @@ const axios = require("axios");
 const router = express.Router();
 const Challenge = require("../models/challengeSchema");
 const Submission = require("../models/submissionSchema");
-const requireCoder = require("../middleware/requireCoder");
 const User = require("../models/userSchema");
+const authorize = require("../middleware/auth");
 
-router.post("/grade", requireCoder, async (req, res) => {
+router.post("/grade", authorize(["coder"]), async (req, res) => {
   try {
     const { challenge_id, lang, code } = req.body;
     if (!challenge_id || !lang || !code) {

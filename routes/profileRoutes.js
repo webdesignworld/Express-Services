@@ -20,17 +20,17 @@ async function createPassword(password) {
  */
 router.get(
   "/profile",
-  authMiddleware(["coder", "manager"]),
+  authMiddleware(["coder", "manager"]), //endpoints are protected using auth.js Middleware(["coder", "manager"])
   async (req, res) => {
     try {
-      // Retrieve the user's profile, excluding the password
-      const user = await User.findById(req.user.id).select("-password");
+      // Retrieve the user's profile
+      const user = await User.findById(req.user.id).select("-password"); //excluding the password
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       let rank;
-      // If the user is a coder, calculate rank: count how many coders have a higher score
+      // If the coder is the entity who made the request then you should calculate the rank of the coder and add it to the response.
       if (user.role === "coder") {
         const countHigher = await User.countDocuments({
           role: "coder",
@@ -54,10 +54,10 @@ router.get(
  */
 router.put(
   "/profile",
-  authMiddleware(["coder", "manager"]),
+  authMiddleware(["coder", "manager"]),  //endpoints are protected using auth.js Middleware(["coder", "manager"])
   async (req, res) => {
     try {
-      const { first_name, last_name, email, password, description } = req.body;
+      const { first_name, last_name, email, password, description } = req.body; //Accepts updates for fields like first_name, last_name, email, password, and description (avatar later)
       const updateData = {};
 
       // Only update fields that are provided

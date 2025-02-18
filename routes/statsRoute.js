@@ -3,7 +3,8 @@ const express = require("express");
 const router = express.Router();
 const Challenge = require("../models/challengeSchema"); // Your challenge model
 const Submission = require("../models/submissionSchema"); // Your submission model
-const requireCoder = require("../middleware/requireCoder"); // JWT-based authentication middleware
+// const requireCoder = require("../middleware/requireCoder"); // JWT-based authentication middleware
+const authorize = require ("../middleware/auth")
 
 /**
  * 1. Solved Challenges Statistics endpoint
@@ -21,9 +22,9 @@ const requireCoder = require("../middleware/requireCoder"); // JWT-based authent
  * - "solved challenges" are determined by the coder's correct submissions.
  * - "total challenges" are the total available challenges per difficulty level.
  */
-router.get("/solved-challenges", requireCoder, async (req, res) => {
+router.get("/solved-challenges", authorize(["coder"]), async (req, res) => { //protect the route of the trending categories from auth
   try {
-    // 1. Get total challenges available per difficulty level.
+    // 1. Get total challenges available per each level.
     const challengeCounts = await Challenge.aggregate([
       {
         $group: {
@@ -32,6 +33,8 @@ router.get("/solved-challenges", requireCoder, async (req, res) => {
         },
       },
     ]);
+
+    //total count for each level
     const totalChallenges = { Easy: 0, Moderate: 0, Hard: 0 };
     challengeCounts.forEach(item => {
       if (item._id === "Easy") totalChallenges.Easy = item.count;
@@ -63,6 +66,8 @@ router.get("/solved-challenges", requireCoder, async (req, res) => {
         },
       },
     ]);
+
+     // Create an object to store correct submissions per level
     const solvedChallenges = { Easy: 0, Moderate: 0, Hard: 0 };
     solvedCounts.forEach(item => {
       if (item._id === "Easy") solvedChallenges.Easy = item.count;
@@ -71,12 +76,12 @@ router.get("/solved-challenges", requireCoder, async (req, res) => {
     });
 
     const result = {
-      totalEasySolvedChallenges: solvedChallenges.Easy,
-      totalModerateSolvedChallenges: solvedChallenges.Moderate,
-      totalHardSolvedChallenges: solvedChallenges.Hard,
-      totalEasyChallenges: totalChallenges.Easy,
-      totalModerateChallenges: totalChallenges.Moderate,
-      totalHardChallenges: totalChallenges.Hard,
+      totalEasySolvedChallenges: solvedChallenges.Easy, //The total number of Easy solved challenges (say 10)
+      totalModerateSolvedChallenges: solvedChallenges.Moderate, // The total number of Moderate solved challenges (say 2)
+      totalHardSolvedChallenges: solvedChallenges.Hard, // The total number of Hard solved challenges (say 1)
+      totalEasyChallenges: totalChallenges.Easy,  // The total number of Easy challenges that are available in the platform (say 111)
+      totalModerateChallenges: totalChallenges.Moderate, // The total number of Moderate challenges that are available in the platform (say 40)
+      totalHardChallenges: totalChallenges.Hard, // The total number of Hard challenges that are available in the platform (say 5)
     };
 
     return res.status(200).json(result);
@@ -98,37 +103,45 @@ router.get("/solved-challenges", requireCoder, async (req, res) => {
  * ]
  *
  * Pipeline steps:
- * - Filter submissions to only include passed submissions.
- * - Perform a lookup from submissions to challenges.
- * - Group by challenge.category and accumulate a count.
- * - Sort the results by count in descending order.
- * - Project only the category and count fields.
+ * 1. Filter submissions Filter submissions to include only those that were correctly passed to
+ensure that only passed submissions are considered for further
+processing in the pipeline.
+ * - 2. Perform a lookup (similar to SQL join operation) from submissions to
+challenges.
+ * - 3. Next, you can group the result by category and cumulate the number
+of occurrences denoted by count.
+4. Next, you can add the category field to the result which is the o
+expected in the output
+ * - 5. Next, you have to sort the results based on the count in descending
+order.
+ * - 6. Finally, you have to project the result and keep the category and
+count fields only
  */
-router.get("/trending-categories", requireCoder, async (req, res) => {
+router.get("/trending-categories", authorize(["coder"]), async (req, res) => { //protect the route of the trending categories requireCoder middleware
   try {
-    const trendingCategories = await Submission.aggregate([
+    const trendingCategories = await Submission.aggregate([ //filter the submissions to only include those with passed: true.
       { $match: { passed: true } },
       {
-        $lookup: {
+        $lookup: { //performs a lookup from the Submission collection to the Challenge collection
           from: "challenges",
           localField: "challengeId",
           foreignField: "_id",
           as: "challenge",
         },
       },
-      { $unwind: "$challenge" },
+      { $unwind: "$challenge" }, //unwinds the joined challenge array with $unwind to work with a single challenge object
       {
-        $group: {
+        $group: { //groups the data by the challenge's category field while summing the occurrences
           _id: "$challenge.category",
           count: { $sum: 1 },
         },
       },
-      { $sort: { count: -1 } },
+      { $sort: { count: -1 } }, //sorts the results by the count in descending order
       {
         $project: {
-          _id: 0,
-          category: "$_id",
-          count: 1,
+          _id: 0,          
+          category: "$_id", //category
+          count: 1, //count
         },
       },
     ]);
@@ -158,52 +171,57 @@ router.get("/trending-categories", requireCoder, async (req, res) => {
  * - Group by the new date field and count the number of submissions per day.
  * - Project only the date and count fields.
  */
-router.get("/heatmap", requireCoder, async (req, res) => {
+router.get("/heatmap", authorize(["coder"]), async (req, res) => {
   try {
-    let { start_date, end_date } = req.query;
+    let { start_date, end_date } = req.query; //extract start_date and end_date from the query parameters.
     const currentDate = new Date();
-    if (!end_date) {
+    if (!end_date) {    // If end_date is not provided, it defaults to the current date. Otherwise, it converts the string to a Date object.
       end_date = currentDate;
     } else {
       end_date = new Date(end_date);
     }
-    if (!start_date) {
+    if (!start_date) { //If start_date is not provided, it defaults to one year before the current date. Otherwise, it converts the provided string to a Date object.
       start_date = new Date(currentDate);
       start_date.setFullYear(start_date.getFullYear() - 1);
     } else {
       start_date = new Date(start_date);
     }
 
+
+
+     console.log("start_date:", start_date);
+     console.log("end_date:", end_date);
+
     const heatmap = await Submission.aggregate([
       {
         $match: {
-          coderId: req.user.id,
-          passed: true,
-          submittedAt: { $gte: start_date, $lte: end_date },
+          coderId: req.user.id, //coderId matches req.user.id from my require coder middleware
+          passed: true, // passed true
+          submittedAt: { $gte: start_date, $lte: end_date }, // submittedAt is within the provided date range in ISO format 2025-02-13T08:53:10.983+00:00
         },
       },
       {
-        $addFields: {
+        $addFields: { //Add a new field called date which formats the submittedAt field into a string in the YYYY/mm/dd format.
           date: { $dateToString: { format: "%Y/%m/%d", date: "$submittedAt" } },
         },
       },
       {
-        $group: {
+        $group: { //Groups the submissions by the newly created date field and calculates the count for each group.
           _id: "$date",
           count: { $sum: 1 },
         },
       },
       {
-        $project: {
+        $project: { //projects the final output to only include the date and count fields.
           _id: 0,
           date: "$_id",
           count: 1,
         },
       },
-      { $sort: { date: 1 } },
+      { $sort: { date: 1 } }, //Sorts the results in ascending order based on the date.
     ]);
 
-    return res.status(200).json(heatmap);
+    return res.status(200).json(heatmap); //Return the aggregated heatmap data as a JSON response.
   } catch (error) {
     console.error("Error fetching heatmap statistics:", error);
     return res.status(500).json({ error: "Internal server error" });
